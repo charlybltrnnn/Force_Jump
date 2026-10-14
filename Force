@@ -1,0 +1,110 @@
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+
+local Player = Players.LocalPlayer
+local PlayerGui = Player:WaitForChild("PlayerGui")
+
+local JumpHeld = false
+local JumpButton
+local Character
+local Humanoid
+
+local function SetupCharacter(Char)
+Character = Char
+Humanoid = Char:WaitForChild("Humanoid")
+end
+
+if Player.Character then
+SetupCharacter(Player.Character)
+end
+
+Player.CharacterAdded:Connect(SetupCharacter)
+
+local function FindJumpButton()
+local TouchGui = PlayerGui:FindFirstChild("TouchGui")
+local Frame = TouchGui and TouchGui:FindFirstChild("TouchControlFrame")
+
+return Frame and Frame:FindFirstChild("JumpButton")
+
+end
+
+local function ProtectButton()
+local Button = FindJumpButton()
+
+if Button and Button ~= JumpButton then
+    JumpButton = Button
+    Button.Visible = true
+
+    Button:GetPropertyChangedSignal("Visible"):Connect(function()
+        if Button.Parent and not Button.Visible then
+            Button.Visible = true
+        end
+    end)
+end
+
+if Button and not Button.Visible then
+    Button.Visible = true
+end
+
+end
+
+UserInputService.InputBegan:Connect(function(Input)
+if Input.UserInputType ~= Enum.UserInputType.Touch then
+return
+end
+
+local Button = FindJumpButton()
+if not Button then
+    return
+end
+
+local P = Input.Position
+local B = Button.AbsolutePosition
+local S = Button.AbsoluteSize
+
+if P.X >= B.X and P.X <= B.X + S.X
+and P.Y >= B.Y and P.Y <= B.Y + S.Y then
+    JumpHeld = true
+end
+
+end)
+
+UserInputService.InputEnded:Connect(function(Input)
+if Input.UserInputType == Enum.UserInputType.Touch then
+JumpHeld = false
+end
+end)
+
+RunService:BindToRenderStep(
+"ForceJumpPersistentV53",
+Enum.RenderPriority.Character.Value + 1,
+function()
+ProtectButton()
+
+    if not JumpHeld or not Humanoid or not Humanoid.Parent then
+        return
+    end
+
+    if not Humanoid:GetStateEnabled(Enum.HumanoidStateType.Jumping) then
+        Humanoid:SetStateEnabled(
+            Enum.HumanoidStateType.Jumping,
+            true
+        )
+    end
+
+    Humanoid.Jump = true
+
+    if Humanoid.FloorMaterial ~= Enum.Material.Air then
+        local State = Humanoid:GetState()
+
+        if State == Enum.HumanoidStateType.Running
+        or State == Enum.HumanoidStateType.Landed then
+            Humanoid:ChangeState(
+                Enum.HumanoidStateType.Jumping
+            )
+        end
+    end
+end
+
+)
